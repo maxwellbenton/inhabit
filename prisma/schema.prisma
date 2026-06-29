@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Reminder {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @default("")
+  imageUrl  String   @default("")
+  videoUrl  String   @default("")
+  time      String // "HH:MM", 24h
+  days      Int[] // 0=Sun .. 6=Sat
+  color     String   @default("cyan")
+  enabled   Boolean  @default(true)
+  skipDates String[] @default([]) // "YYYY-MM-DD" dates to silence a single occurrence
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkBlock {
+  id        String   @id @default(cuid())
+  label     String
+  start     String // "HH:MM"
+  end       String // "HH:MM"
+  workMin   Int      @default(25)
+  breakMin  Int      @default(5)
+  days      Int[]
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Single-row table holding app-wide settings.
+model AppSettings {
+  id              Int @id @default(1)
+  takeoverSeconds Int @default(90)
+}
