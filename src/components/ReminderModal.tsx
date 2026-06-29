@@ -18,10 +18,12 @@ export type ReminderDraft = Partial<Reminder> & { id?: string };
 
 export default function ReminderModal({
   draft,
+  hidden,
   onClose,
   onPreview,
 }: {
   draft: ReminderDraft;
+  hidden?: boolean;
   onClose: () => void;
   onPreview: (draft: ReminderDraft) => void;
 }) {
@@ -35,7 +37,10 @@ export default function ReminderModal({
   const [color, setColor] = useState(draft.color ?? 'cyan');
   const [enabled, setEnabled] = useState(draft.enabled ?? true);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
+  const busy = submitting || deleting;
 
   const [createReminder] = useMutation(CREATE_REMINDER, { refetchQueries: [{ query: REMINDERS_QUERY }] });
   const [updateReminder] = useMutation(UPDATE_REMINDER, { refetchQueries: [{ query: REMINDERS_QUERY }] });
@@ -70,24 +75,41 @@ export default function ReminderModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const input = currentInput();
-    if (draft.id) {
-      await updateReminder({ variables: { id: draft.id, input } });
-    } else {
-      await createReminder({ variables: { input } });
+    setSubmitting(true);
+    setError('');
+    try {
+      const input = currentInput();
+      if (draft.id) {
+        await updateReminder({ variables: { id: draft.id, input } });
+      } else {
+        await createReminder({ variables: { input } });
+      }
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Save failed');
+      setSubmitting(false);
     }
-    onClose();
   }
 
   async function handleDelete() {
     if (!draft.id) return;
     if (!confirm('Delete this reminder?')) return;
-    await deleteReminder({ variables: { id: draft.id } });
-    onClose();
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteReminder({ variables: { id: draft.id } });
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Delete failed');
+      setDeleting(false);
+    }
   }
 
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className={`modal-backdrop${hidden ? ' hidden-for-preview' : ''}`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div className="modal">
         <h2>{isNew ? 'New reminder' : 'Edit reminder'}</h2>
         <form onSubmit={handleSubmit}>
@@ -149,19 +171,21 @@ export default function ReminderModal({
           </label>
 
           <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={() => onPreview(currentInput())}>
+            <button type="button" className="btn-secondary" onClick={() => onPreview(currentInput())} disabled={busy}>
               Preview
             </button>
             {!isNew && (
-              <button type="button" className="btn-danger" onClick={handleDelete}>
-                Delete
+              <button type="button" className="btn-danger" onClick={handleDelete} disabled={busy}>
+                {deleting && <span className="btn-spinner" />}
+                {deleting ? 'Deleting…' : 'Delete'}
               </button>
             )}
-            <button type="button" className="btn-secondary" onClick={onClose}>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Save
+            <button type="submit" className="btn-primary" disabled={busy}>
+              {submitting && <span className="btn-spinner" />}
+              {submitting ? 'Saving…' : 'Save'}
             </button>
           </div>
         </form>

@@ -24,6 +24,10 @@ export default function WorkBlockModal({ draft, onClose }: { draft: WorkBlockDra
   const [breakMin, setBreakMin] = useState(draft.breakMin ?? 5);
   const [days, setDays] = useState<number[]>(draft.days?.length ? draft.days : DEFAULT_DAYS);
   const [enabled, setEnabled] = useState(draft.enabled ?? true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+  const busy = submitting || deleting;
 
   const [createWorkBlock] = useMutation(CREATE_WORKBLOCK, { refetchQueries: [{ query: WORKBLOCKS_QUERY }] });
   const [updateWorkBlock] = useMutation(UPDATE_WORKBLOCK, { refetchQueries: [{ query: WORKBLOCKS_QUERY }] });
@@ -35,20 +39,34 @@ export default function WorkBlockModal({ draft, onClose }: { draft: WorkBlockDra
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const input = { label: label || 'Work block', start, end, workMin, breakMin, days: days.length ? days : DEFAULT_DAYS, enabled };
-    if (draft.id) {
-      await updateWorkBlock({ variables: { id: draft.id, input } });
-    } else {
-      await createWorkBlock({ variables: { input } });
+    setSubmitting(true);
+    setError('');
+    try {
+      const input = { label: label || 'Work block', start, end, workMin, breakMin, days: days.length ? days : DEFAULT_DAYS, enabled };
+      if (draft.id) {
+        await updateWorkBlock({ variables: { id: draft.id, input } });
+      } else {
+        await createWorkBlock({ variables: { input } });
+      }
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Save failed');
+      setSubmitting(false);
     }
-    onClose();
   }
 
   async function handleDelete() {
     if (!draft.id) return;
     if (!confirm('Delete this work block?')) return;
-    await deleteWorkBlock({ variables: { id: draft.id } });
-    onClose();
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteWorkBlock({ variables: { id: draft.id } });
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Delete failed');
+      setDeleting(false);
+    }
   }
 
   return (
@@ -94,17 +112,21 @@ export default function WorkBlockModal({ draft, onClose }: { draft: WorkBlockDra
             <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Active
           </label>
 
+          {error && <p style={{ color: '#ff9b9b', fontSize: '0.85rem' }}>{error}</p>}
+
           <div className="modal-actions">
             {!isNew && (
-              <button type="button" className="btn-danger" onClick={handleDelete}>
-                Delete
+              <button type="button" className="btn-danger" onClick={handleDelete} disabled={busy}>
+                {deleting && <span className="btn-spinner" />}
+                {deleting ? 'Deleting…' : 'Delete'}
               </button>
             )}
-            <button type="button" className="btn-secondary" onClick={onClose}>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Save
+            <button type="submit" className="btn-primary" disabled={busy}>
+              {submitting && <span className="btn-spinner" />}
+              {submitting ? 'Saving…' : 'Save'}
             </button>
           </div>
         </form>

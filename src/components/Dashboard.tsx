@@ -21,7 +21,9 @@ import SettingsModal from './SettingsModal';
 const THEMES = ['midnight', 'forest', 'sunset', 'slate', 'ocean'];
 const LAYOUTS = ['a', 'b', 'c', 'd'];
 
-type OverlayPayload = { type: 'reminder'; data: Reminder | ReminderDraft } | { type: 'break'; data: WorkBlock };
+type OverlayPayload =
+  | { type: 'reminder'; data: Reminder | ReminderDraft; isPreview?: boolean }
+  | { type: 'break'; data: WorkBlock };
 
 export default function Dashboard() {
   const { data: session } = useSession();
@@ -96,7 +98,9 @@ export default function Dashboard() {
     setFading(true);
     setTimeout(() => {
       setCurrentOverlay((cur) => {
-        if (cur?.type === 'reminder') {
+        // Skip the "it happened" badge for a Preview click from the editing
+        // modal — nothing actually fired, it was just a look at the draft.
+        if (cur?.type === 'reminder' && !cur.isPreview) {
           const title = (cur.data as Reminder).title;
           setBadge({ title, sub: 'It happened — carry on' });
           setTimeout(() => setBadge(null), 5 * 60 * 1000);
@@ -362,8 +366,15 @@ export default function Dashboard() {
       {editingReminder && (
         <ReminderModal
           draft={editingReminder}
+          // The modal backdrop renders above the full-screen takeover
+          // (#overlayRoot is z-index 100, .modal-backdrop is 200) so a
+          // preview would otherwise be stuck behind the modal that's still
+          // open. Hide (not unmount) it for the duration of a preview so
+          // the takeover is actually visible, and unsaved field edits
+          // survive the round trip.
+          hidden={currentOverlay?.type === 'reminder' && currentOverlay.isPreview === true}
           onClose={() => setEditingReminder(null)}
-          onPreview={(draft) => queueOverlay({ type: 'reminder', data: draft })}
+          onPreview={(draft) => queueOverlay({ type: 'reminder', data: draft, isPreview: true })}
         />
       )}
       {editingWorkBlock && <WorkBlockModal draft={editingWorkBlock} onClose={() => setEditingWorkBlock(null)} />}

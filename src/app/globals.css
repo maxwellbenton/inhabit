@@ -218,6 +218,12 @@ html, body {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
   display: flex; align-items: center; justify-content: center; z-index: 200;
 }
+/* While a reminder preview is showing, the edit modal needs to get out of
+   the way (it sits at a higher z-index than #overlayRoot so the full-screen
+   takeover can be seen). Hidden via visibility, not unmounted, so the form's
+   in-progress field state survives the preview and the modal reappears once
+   it ends. */
+.modal-backdrop.hidden-for-preview { visibility: hidden; pointer-events: none; }
 .modal {
   background: #161b22; color: #e8edf2;
   border-radius: 16px; padding: 1.8rem 2rem;
@@ -245,11 +251,29 @@ html, body {
 .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; flex-wrap: wrap; margin-top: 1.2rem; }
 .btn-primary, .btn-secondary, .btn-danger {
   border-radius: 8px; padding: 0.55rem 1.1rem; font-size: 0.9rem; cursor: pointer; border: none;
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  transition: opacity 0.15s ease;
 }
 .btn-primary { background: #5ad1e6; color: #04141a; font-weight: 700; }
 .btn-secondary { background: rgba(255,255,255,0.1); color: #e8edf2; }
 .btn-danger { background: rgba(230,90,90,0.18); color: #ff9b9b; margin-right: auto; }
+.btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled {
+  opacity: 0.55; cursor: not-allowed;
+}
 .file-import-label { display: inline-flex; align-items: center; cursor: pointer; }
+
+/* Small inline spinner for in-flight button states (Save/Delete) — a pure
+   CSS animation so it keeps spinning regardless of what the JS event loop
+   is doing, giving an immediate "this is working" signal the instant a
+   button is clicked, well before the mutation/network call resolves. */
+.btn-spinner {
+  width: 0.85em; height: 0.85em; border-radius: 50%;
+  border: 2px solid currentColor; border-top-color: transparent;
+  opacity: 0.8;
+  animation: btn-spin 0.6s linear infinite;
+  flex: none;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
 
 /* ===========================================================
    LAYOUT VARIANTS — change clock position & panel arrangement
