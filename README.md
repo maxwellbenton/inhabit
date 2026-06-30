@@ -1,6 +1,6 @@
 # Inhabit (Next.js + Apollo + Postgres)
 
-Cross-device version of the habit dashboard: a full-screen reminder/pomodoro display backed by a real database, so reminders you create on your work computer show up on your personal one too. Protected by Google sign-in, locked to a single allowed email.
+Cross-device version of the habit dashboard: a full-screen reminder/pomodoro display backed by a real database, so reminders you create on your work computer show up on your personal one too. Protected by Google sign-in, locked to an allowlist of specific emails — each allowed account gets its own private reminders, work blocks, and settings.
 
 ## Stack
 
@@ -45,7 +45,7 @@ Open `http://localhost:3000`. You'll be sent to Google sign-in first.
    - Local: `http://localhost:3000/api/auth/callback/google`
    - Production: `https://<your-app>.vercel.app/api/auth/callback/google`
 4. Copy the generated **Client ID** and **Client Secret** into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
-5. `ALLOWED_EMAIL` should be the Google account email you actually sign in with (`maxwellbenton@gmail.com`). Anyone else who tries to sign in will be rejected even though Google auth succeeds.
+5. `ALLOWED_EMAIL` is a comma-separated list of the Google account emails allowed to sign in (e.g. `maxwellbenton@gmail.com,partner@gmail.com`). Anyone not on the list is rejected even though Google auth succeeds. Each listed account's data is fully isolated — they never see each other's reminders or work blocks.
 
 `NEXTAUTH_SECRET` — generate one with `openssl rand -base64 32`.
 
@@ -57,6 +57,7 @@ Settings (takeover duration) and sign-out are in the gear icon in the top bar.
 
 ## Notes / known limitations
 
+- **Per-user data isolation was added after the first deploy.** If you already ran `npx prisma db push` against a real database before this, `Reminder`/`WorkBlock` rows won't have a `userEmail` value yet and the new `NOT NULL` column will fail to apply (or `AppSettings`'s `id` column was dropped in favor of `userEmail`). Simplest fix for a personal dev/single-user database: drop the three tables (or the whole DB) and re-run `npx prisma db push` + `npm run prisma:seed`. If you have real data you want to keep, backfill `userEmail` on the existing rows with your account's email first, then push.
 - **Scheduling runs in the browser tab**, not on a server — the dashboard needs to stay open (e.g. on your second monitor) to fire reminders. There's no server-side push/notification.
 - **One-minute resolution**: reminders fire when the clock matches `HH:MM`, checked every 5 seconds.
 - Video autoplay requires the video to be muted (browser policy) — already wired up for YouTube/Vimeo/direct file links.

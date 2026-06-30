@@ -9,6 +9,7 @@ datasource db {
 
 model Reminder {
   id        String   @id @default(cuid())
+  userEmail String // owning account — every query/mutation is scoped to this
   title     String
   body      String   @default("")
   imageUrl  String   @default("")
@@ -20,10 +21,13 @@ model Reminder {
   skipDates String[] @default([]) // "YYYY-MM-DD" dates to silence a single occurrence
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userEmail])
 }
 
 model WorkBlock {
   id        String   @id @default(cuid())
+  userEmail String // owning account — every query/mutation is scoped to this
   label     String
   start     String // "HH:MM"
   end       String // "HH:MM"
@@ -33,10 +37,12 @@ model WorkBlock {
   enabled   Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userEmail])
 }
 
-// Single-row table holding app-wide settings.
+// One row per account — each signed-in user gets their own settings.
 model AppSettings {
-  id              Int @id @default(1)
-  takeoverSeconds Int @default(90)
+  userEmail       String @id
+  takeoverSeconds Int    @default(90)
 }

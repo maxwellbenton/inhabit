@@ -18,7 +18,11 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       const allowed = process.env.ALLOWED_EMAIL;
       if (!allowed) return true; // no restriction configured — anyone with a Google account can sign in
-      return user.email?.toLowerCase() === allowed.toLowerCase();
+      // Comma-separated list — each allowed account gets fully isolated data
+      // (see prisma/schema.prisma's userEmail fields), so this just controls
+      // who's allowed in the door, not who can see whose reminders.
+      const allowedList = allowed.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+      return allowedList.includes(user.email?.toLowerCase() ?? '');
     },
   },
 };
